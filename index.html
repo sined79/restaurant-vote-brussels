@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vote Restaurant - Midi</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Où mange-t-on ce midi ? 🍽️</h1>
+            <p>Votez pour votre restaurant préféré (5 personnes max).</p>
+        </header>
+
+        <main>
+            <div id="map"></div>
+
+            <section class="voting-section">
+                <h2>Les Options</h2>
+                <div class="options-grid">
+                    <button class="vote-btn" data-restaurant="damas">
+                        <h3>Les Jours de Damas</h3>
+                        <span class="vote-count" id="count-damas">0</span> votes
+                    </button>
+                    <button class="vote-btn" data-restaurant="solemio">
+                        <h3>O Sole Mio</h3>
+                        <span class="vote-count" id="count-solemio">0</span> votes
+                    </button>
+                    <button class="vote-btn" data-restaurant="hanimeli">
+                        <h3>Hanimeli</h3>
+                        <span class="vote-count" id="count-hanimeli">0</span> votes
+                    </button>
+                    <button class="vote-btn" data-restaurant="grandcanal">
+                        <h3>Grand Canal</h3>
+                        <span class="vote-count" id="count-grandcanal">0</span> votes
+                    </button>
+                </div>
+                
+                <div class="status-bar">
+                    <p>Votes enregistrés : <span id="total-votes">0</span> / 5</p>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
+                </div>
+
+                <div id="winner-announcement" class="hidden">
+                    <h2>🏆 Le choix final : <span id="winner-name"></span></h2>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="script.js"></script>
+</body>
+</html>
