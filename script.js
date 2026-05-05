@@ -1,161 +1,131 @@
-// Initialize Map
-const map = L.map('map').setView([50.8606, 4.3563], 15);
+const restaurants = [
+    { id: 1, name: "Les Jours de Damas", lat: 50.8596814, lng: 4.341458 },
+    { id: 2, name: "O Sole Mio", lat: 50.8590622, lng: 4.3546389 },
+    { id: 3, name: "Hanimeli", lat: 50.860081, lng: 4.3697231 },
+    { id: 4, name: "Grand Canal", lat: 50.8611643, lng: 4.3634908 },
+    { id: 5, name: "Food Market, Gare Maritime", lat: 50.863145, lng: 4.3424341 },
+    { id: 6, name: "Ikigai Sushi", lat: 50.8578162, lng: 4.3540523 }
+];
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap contributors'
-}).addTo(map);
+let votes = {}; // format: { "Denis": 1, "Alice": 2 }
+let bucketId = window.location.hash.substring(1);
+let map;
 
-// Exact Coordinates
-const restaurants = {
-    damas: { name: "Les Jours de Damas", lat: 50.8596814, lng: 4.341458 },
-    solemio: { name: "O Sole Mio", lat: 50.8590622, lng: 4.3546389 },
-    hanimeli: { name: "Hanimeli", lat: 50.860081, lng: 4.3697231 },
-    grandcanal: { name: "Grand Canal", lat: 50.8611643, lng: 4.3634908 },
-    foodmarket: { name: "Food Market, Gare Maritime", lat: 50.863145, lng: 4.3424341 },
-    ikigai: { name: "Ikigai Sushi", lat: 50.8578162, lng: 4.3540523 }
-};
+async function initDB() {
+    if (!bucketId) {
+        try {
+            // Create a new bucket on kvdb.io for real-time sync
+            const res = await fetch("https://kvdb.io/", { method: "POST" });
+            bucketId = await res.text();
+            window.location.hash = bucketId;
+        } catch (e) {
+            console.error("Erreur initialisation DB:", e);
+            bucketId = "default-vote-brussels"; 
+        }
+    }
+    
+    // Display share link with the bucket ID in hash
+    document.getElementById('share-link-container').style.display = 'block';
+    const shareLink = document.getElementById('share-link');
+    shareLink.href = window.location.href;
+    shareLink.textContent = window.location.href;
 
-// Add markers
-const markers = {};
-for (const [key, data] of Object.entries(restaurants)) {
-    const marker = L.marker([data.lat, data.lng]).addTo(map)
-        .bindPopup(`<b>${data.name}</b>`);
-    markers[key] = marker;
+    fetchVotes();
+    // Poll for real-time updates across devices
+    setInterval(fetchVotes, 2000);
 }
-
-// Global State via KVDB
-const BUCKET_ID = 'UzhA9xsFANbXTpnmj6EHUP';
-const API_URL = `https://kvdb.io/${BUCKET_ID}/votes`;
-const MAX_VOTES = 5;
-
-const voteButtons = document.querySelectorAll('.vote-btn');
-const totalVotesSpan = document.getElementById('total-votes');
-const progressBar = document.getElementById('progress-bar');
-const winnerAnnouncement = document.getElementById('winner-announcement');
-const winnerName = document.getElementById('winner-name');
-const voterNameInput = document.getElementById('voter-name');
-
-let currentVoters = {}; // { "Denis": "damas" }
 
 async function fetchVotes() {
     try {
-        const response = await fetch(API_URL);
-        if (response.ok) {
-            const data = await response.json();
+        const res = await fetch(`https://kvdb.io/${bucketId}/votes`);
+        if (res.ok) {
+            const data = await res.json();
             if (data && typeof data === 'object') {
-                currentVoters = data;
-                updateUI();
+                votes = data;
+                renderRestaurants();
             }
         }
     } catch (e) {
-        console.error("Error fetching votes:", e);
+        // Silently handle fetch errors during polling
     }
 }
 
-async function saveVote(name, restaurantKey) {
-    // Optimistic update
-    currentVoters[name] = restaurantKey;
-    updateUI();
-
+async function saveVotes() {
     try {
-        await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(currentVoters)
+        await fetch(`https://kvdb.io/${bucketId}/votes`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(votes)
         });
-        // Fetch back to ensure sync
-        fetchVotes();
     } catch (e) {
-        console.error("Error saving vote:", e);
+        console.error("Erreur lors de la sauvegarde des votes:", e);
     }
 }
 
-function updateUI() {
-    // Reset counts and lists
-    const counts = { damas: 0, solemio: 0, hanimeli: 0, grandcanal: 0, foodmarket: 0, ikigai: 0 };
-    const lists = { damas: [], solemio: [], hanimeli: [], grandcanal: [], foodmarket: [], ikigai: [] };
-    let totalVotes = 0;
-
-    for (const [name, restKey] of Object.entries(currentVoters)) {
-        if (counts[restKey] !== undefined) {
-            counts[restKey]++;
-            lists[restKey].push(name);
-            totalVotes++;
-        }
+function handleVote(restId) {
+    const usernameInput = document.getElementById('username');
+    const username = usernameInput.value.trim();
+    if (!username) {
+        alert("Veuillez saisir votre prénom avant de voter.");
+        usernameInput.focus();
+        return;
     }
 
-    // Update DOM
-    for (const key of Object.keys(restaurants)) {
-        document.getElementById(`count-${key}`).innerText = counts[key];
-        document.getElementById(`voters-${key}`).innerText = lists[key].join(', ');
+    const currentVoters = Object.keys(votes).length;
+    // Check if user is new and max capacity is reached
+    if (!votes[username] && currentVoters >= 5) {
+        alert("Le nombre maximum de participants (5) a été atteint.");
+        return;
     }
 
-    totalVotesSpan.innerText = totalVotes;
-    const progressPercentage = Math.min((totalVotes / MAX_VOTES) * 100, 100);
-    progressBar.style.width = `${progressPercentage}%`;
-
-    if (totalVotes >= MAX_VOTES) {
-        endVoting(counts);
-    } else {
-        // Ensure buttons are enabled if we are below max votes
-        voteButtons.forEach(btn => btn.disabled = false);
-        winnerAnnouncement.classList.add('hidden');
-    }
+    votes[username] = restId;
+    renderRestaurants();
+    saveVotes();
 }
 
-function endVoting(counts) {
-    voteButtons.forEach(btn => btn.disabled = true);
+function initMap() {
+    // Initialize map centered around the restaurants
+    map = L.map('map', { zoomControl: false }).setView([50.8605, 4.3550], 15);
+    L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
-    let winnerKey = null;
-    let maxVotes = -1;
-    let tie = false;
+    // Premium map style (CartoDB Voyager)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 20
+    }).addTo(map);
 
-    for (const [key, votes] of Object.entries(counts)) {
-        if (votes > maxVotes) {
-            maxVotes = votes;
-            winnerKey = key;
-            tie = false;
-        } else if (votes === maxVotes) {
-            tie = true;
-        }
-    }
-
-    winnerAnnouncement.classList.remove('hidden');
-    if (tie) {
-        winnerName.innerText = "Égalité ! (Il faut un tirage au sort)";
-    } else if (winnerKey) {
-        const winner = restaurants[winnerKey];
-        winnerName.innerText = winner.name;
-        map.setView([winner.lat, winner.lng], 16);
-        markers[winnerKey].openPopup();
-    }
-}
-
-// Event Listeners
-voteButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        const name = voterNameInput.value.trim();
-        if (!name) {
-            alert('Veuillez entrer votre prénom pour voter.');
-            voterNameInput.focus();
-            return;
-        }
-
-        const totalVotes = Object.keys(currentVoters).length;
-        if (totalVotes >= MAX_VOTES && !currentVoters[name]) {
-            alert('Le nombre maximum de votes (5) a été atteint.');
-            return;
-        }
-
-        const key = button.getAttribute('data-restaurant');
-        markers[key].openPopup();
-        saveVote(name, key);
+    // Add markers
+    restaurants.forEach(r => {
+        const marker = L.marker([r.lat, r.lng]).addTo(map);
+        marker.bindPopup(`<b>${r.name}</b>`);
     });
-});
+}
 
-// Initial fetch and start polling
-fetchVotes();
-setInterval(fetchVotes, 3000);
+function renderRestaurants() {
+    const list = document.getElementById('restaurants-list');
+    list.innerHTML = '';
+
+    restaurants.forEach(r => {
+        const card = document.createElement('div');
+        card.className = 'restaurant-card';
+        
+        // Find voters for this specific restaurant
+        const votersForRest = Object.keys(votes).filter(user => votes[user] === r.id);
+        
+        card.innerHTML = `
+            <div class="rest-name">${r.name}</div>
+            <button class="vote-btn" onclick="handleVote(${r.id})">Voter pour ce restaurant</button>
+            <div class="voters-list">
+                ${votersForRest.map(v => `<span class="voter-badge">${v}</span>`).join('')}
+            </div>
+        `;
+        list.appendChild(card);
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    initMap();
+    renderRestaurants();
+    initDB();
+});

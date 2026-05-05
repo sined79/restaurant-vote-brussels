@@ -3,81 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vote Restaurant - Midi</title>
+    <title>Vote Restaurant - Premium</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header class="main-header">
-        <h1>Où mange-t-on ce midi ? 🍽️</h1>
-        <p>Votez pour votre restaurant préféré (5 personnes max).</p>
-    </header>
-
-    <div id="map-container">
-        <div id="map"></div>
+    <div id="map"></div>
+    <div class="overlay">
+        <div class="header">
+            <h1>Choisissez notre restaurant</h1>
+            <p>Saisissez votre prénom, faites votre choix (max 5 participants).</p>
+            <p class="share-link" id="share-link-container" style="display:none;">
+                Lien à partager : <br><a href="#" id="share-link" target="_blank"></a>
+            </p>
+            <div class="user-input">
+                <input type="text" id="username" placeholder="Votre prénom..." maxlength="20">
+            </div>
+        </div>
+        <div class="restaurants" id="restaurants-list">
+            <!-- Populated by JS -->
+        </div>
     </div>
-
-    <div class="container">
-        <main>
-            <section class="voting-section">
-                <h2>Les Options</h2>
-                
-                <div class="user-input-group">
-                    <label for="voter-name">Votre prénom :</label>
-                    <input type="text" id="voter-name" placeholder="Entrez votre prénom pour voter" required>
-                </div>
-
-                <div class="options-grid">
-                    <button class="vote-btn" data-restaurant="damas">
-                        <h3>Les Jours de Damas</h3>
-                        <div class="voters-list" id="voters-damas"></div>
-                        <span class="vote-count" id="count-damas">0</span> votes
-                    </button>
-                    <button class="vote-btn" data-restaurant="solemio">
-                        <h3>O Sole Mio</h3>
-                        <div class="voters-list" id="voters-solemio"></div>
-                        <span class="vote-count" id="count-solemio">0</span> votes
-                    </button>
-                    <button class="vote-btn" data-restaurant="hanimeli">
-                        <h3>Hanimeli</h3>
-                        <div class="voters-list" id="voters-hanimeli"></div>
-                        <span class="vote-count" id="count-hanimeli">0</span> votes
-                    </button>
-                    <button class="vote-btn" data-restaurant="grandcanal">
-                        <h3>Grand Canal</h3>
-                        <div class="voters-list" id="voters-grandcanal"></div>
-                        <span class="vote-count" id="count-grandcanal">0</span> votes
-                    </button>
-                    <button class="vote-btn" data-restaurant="foodmarket">
-                        <h3>Food Market, Gare Maritime</h3>
-                        <div class="voters-list" id="voters-foodmarket"></div>
-                        <span class="vote-count" id="count-foodmarket">0</span> votes
-                    </button>
-                    <button class="vote-btn" data-restaurant="ikigai">
-                        <h3>Ikigai Sushi <a href="https://www.ikigaisushi.be/" target="_blank" style="font-size: 0.6em; color: inherit;">(Site Web)</a></h3>
-                        <div class="voters-list" id="voters-ikigai"></div>
-                        <span class="vote-count" id="count-ikigai">0</span> votes
-                    </button>
-                </div>
-                
-                <div class="status-bar">
-                    <p>Votes enregistrés : <span id="total-votes">0</span> / 5</p>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar" id="progress-bar"></div>
-                    </div>
-                </div>
-
-                <div id="winner-announcement" class="hidden">
-                    <h2>🏆 Le choix final : <span id="winner-name"></span></h2>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
