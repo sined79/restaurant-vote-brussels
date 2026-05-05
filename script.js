@@ -1,161 +1,125 @@
-// Initialize Map
-const map = L.map('map').setView([50.8606, 4.3563], 15);
+const BUCKET_ID = 'Rz2FQXkurwbbUtAD2HRsJF';
+const KVDB_URL = `https://kvdb.io/${BUCKET_ID}/votes`;
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap contributors'
-}).addTo(map);
+const restaurants = [
+    { id: 1, name: "Les Jours de Damas", lat: 50.8596814, lng: 4.341458 },
+    { id: 2, name: "O Sole Mio", lat: 50.8590622, lng: 4.3546389 },
+    { id: 3, name: "Hanimeli", lat: 50.860081, lng: 4.3697231 },
+    { id: 4, name: "Grand Canal", lat: 50.8611643, lng: 4.3634908 },
+    { id: 5, name: "Food Market, Gare Maritime", lat: 50.863145, lng: 4.3424341 },
+    { id: 6, name: "Ikigai Sushi", lat: 50.8578162, lng: 4.3540523 }
+];
 
-// Exact Coordinates
-const restaurants = {
-    damas: { name: "Les Jours de Damas", lat: 50.8596814, lng: 4.341458 },
-    solemio: { name: "O Sole Mio", lat: 50.8590622, lng: 4.3546389 },
-    hanimeli: { name: "Hanimeli", lat: 50.860081, lng: 4.3697231 },
-    grandcanal: { name: "Grand Canal", lat: 50.8611643, lng: 4.3634908 },
-    foodmarket: { name: "Food Market, Gare Maritime", lat: 50.863145, lng: 4.3424341 },
-    ikigai: { name: "Ikigai Sushi", lat: 50.8578162, lng: 4.3540523 }
+let globalVotes = {}; // Format: { "Prénom": restaurantId }
+
+// Initialize Leaflet Map
+const initMap = () => {
+    // Center map around Brussels
+    const map = L.map('map').setView([50.860, 4.355], 14);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 20
+    }).addTo(map);
+
+    // Add markers
+    restaurants.forEach(rest => {
+        const marker = L.marker([rest.lat, rest.lng]).addTo(map);
+        marker.bindPopup(`<b>${rest.name}</b>`);
+    });
 };
 
-// Add markers
-const markers = {};
-for (const [key, data] of Object.entries(restaurants)) {
-    const marker = L.marker([data.lat, data.lng]).addTo(map)
-        .bindPopup(`<b>${data.name}</b>`);
-    markers[key] = marker;
-}
+// Generate Restaurant Cards
+const renderRestaurants = () => {
+    const grid = document.getElementById('restaurants-grid');
+    grid.innerHTML = '';
 
-// Global State via KVDB
-const BUCKET_ID = 'UzhA9xsFANbXTpnmj6EHUP';
-const API_URL = `https://kvdb.io/${BUCKET_ID}/votes`;
-const MAX_VOTES = 5;
+    restaurants.forEach(rest => {
+        const card = document.createElement('div');
+        card.className = 'restaurant-card';
 
-const voteButtons = document.querySelectorAll('.vote-btn');
-const totalVotesSpan = document.getElementById('total-votes');
-const progressBar = document.getElementById('progress-bar');
-const winnerAnnouncement = document.getElementById('winner-announcement');
-const winnerName = document.getElementById('winner-name');
-const voterNameInput = document.getElementById('voter-name');
+        // Count votes for this restaurant
+        const voters = Object.keys(globalVotes).filter(name => globalVotes[name] === rest.id);
 
-let currentVoters = {}; // { "Denis": "damas" }
+        card.innerHTML = `
+            <h3 class="restaurant-name">${rest.name}</h3>
+            <button class="vote-btn" onclick="handleVote(${rest.id})">Voter pour ce lieu</button>
+            <div class="voters-list">
+                <div class="voters-title">Votants (${voters.length})</div>
+                <div class="voters-container">
+                    ${voters.map(v => `<span class="voter-badge">${v}</span>`).join('')}
+                </div>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+};
 
-async function fetchVotes() {
+// Handle Voting
+const handleVote = async (restaurantId) => {
+    const nameInput = document.getElementById('voter-name').value.trim();
+    const statusMsg = document.getElementById('status-message');
+
+    if (!nameInput) {
+        statusMsg.style.color = '#ef4444';
+        statusMsg.textContent = "Veuillez entrer votre prénom avant de voter.";
+        setTimeout(() => statusMsg.textContent = '', 3000);
+        return;
+    }
+
+    // Check max voters (5) if it's a new voter
+    const currentVotersCount = Object.keys(globalVotes).length;
+    if (!globalVotes[nameInput] && currentVotersCount >= 5) {
+        statusMsg.style.color = '#ef4444';
+        statusMsg.textContent = "Le nombre maximum de 5 votants a été atteint.";
+        setTimeout(() => statusMsg.textContent = '', 3000);
+        return;
+    }
+
+    statusMsg.style.color = '#2563eb';
+    statusMsg.textContent = "Enregistrement de votre vote...";
+
+    // Update local state first for immediate feedback
+    globalVotes[nameInput] = restaurantId;
+    renderRestaurants();
+
     try {
-        const response = await fetch(API_URL);
+        await fetch(KVDB_URL, {
+            method: 'POST',
+            body: JSON.stringify(globalVotes)
+        });
+        statusMsg.textContent = "Vote enregistré avec succès !";
+        setTimeout(() => statusMsg.textContent = '', 3000);
+    } catch (error) {
+        console.error("Erreur lors de l'enregistrement:", error);
+        statusMsg.style.color = '#ef4444';
+        statusMsg.textContent = "Erreur de connexion. Réessayez.";
+    }
+};
+
+// Fetch initial data & start polling
+const fetchVotes = async () => {
+    try {
+        const response = await fetch(KVDB_URL);
         if (response.ok) {
             const data = await response.json();
             if (data && typeof data === 'object') {
-                currentVoters = data;
-                updateUI();
+                globalVotes = data;
+                renderRestaurants();
             }
         }
-    } catch (e) {
-        console.error("Error fetching votes:", e);
+    } catch (error) {
+        console.error("Erreur de récupération des votes:", error);
     }
-}
+};
 
-async function saveVote(name, restaurantKey) {
-    // Optimistic update
-    currentVoters[name] = restaurantKey;
-    updateUI();
-
-    try {
-        await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(currentVoters)
-        });
-        // Fetch back to ensure sync
-        fetchVotes();
-    } catch (e) {
-        console.error("Error saving vote:", e);
-    }
-}
-
-function updateUI() {
-    // Reset counts and lists
-    const counts = { damas: 0, solemio: 0, hanimeli: 0, grandcanal: 0, foodmarket: 0, ikigai: 0 };
-    const lists = { damas: [], solemio: [], hanimeli: [], grandcanal: [], foodmarket: [], ikigai: [] };
-    let totalVotes = 0;
-
-    for (const [name, restKey] of Object.entries(currentVoters)) {
-        if (counts[restKey] !== undefined) {
-            counts[restKey]++;
-            lists[restKey].push(name);
-            totalVotes++;
-        }
-    }
-
-    // Update DOM
-    for (const key of Object.keys(restaurants)) {
-        document.getElementById(`count-${key}`).innerText = counts[key];
-        document.getElementById(`voters-${key}`).innerText = lists[key].join(', ');
-    }
-
-    totalVotesSpan.innerText = totalVotes;
-    const progressPercentage = Math.min((totalVotes / MAX_VOTES) * 100, 100);
-    progressBar.style.width = `${progressPercentage}%`;
-
-    if (totalVotes >= MAX_VOTES) {
-        endVoting(counts);
-    } else {
-        // Ensure buttons are enabled if we are below max votes
-        voteButtons.forEach(btn => btn.disabled = false);
-        winnerAnnouncement.classList.add('hidden');
-    }
-}
-
-function endVoting(counts) {
-    voteButtons.forEach(btn => btn.disabled = true);
-
-    let winnerKey = null;
-    let maxVotes = -1;
-    let tie = false;
-
-    for (const [key, votes] of Object.entries(counts)) {
-        if (votes > maxVotes) {
-            maxVotes = votes;
-            winnerKey = key;
-            tie = false;
-        } else if (votes === maxVotes) {
-            tie = true;
-        }
-    }
-
-    winnerAnnouncement.classList.remove('hidden');
-    if (tie) {
-        winnerName.innerText = "Égalité ! (Il faut un tirage au sort)";
-    } else if (winnerKey) {
-        const winner = restaurants[winnerKey];
-        winnerName.innerText = winner.name;
-        map.setView([winner.lat, winner.lng], 16);
-        markers[winnerKey].openPopup();
-    }
-}
-
-// Event Listeners
-voteButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        const name = voterNameInput.value.trim();
-        if (!name) {
-            alert('Veuillez entrer votre prénom pour voter.');
-            voterNameInput.focus();
-            return;
-        }
-
-        const totalVotes = Object.keys(currentVoters).length;
-        if (totalVotes >= MAX_VOTES && !currentVoters[name]) {
-            alert('Le nombre maximum de votes (5) a été atteint.');
-            return;
-        }
-
-        const key = button.getAttribute('data-restaurant');
-        markers[key].openPopup();
-        saveVote(name, key);
-    });
+// Main Initialization
+document.addEventListener('DOMContentLoaded', () => {
+    initMap();
+    renderRestaurants();
+    fetchVotes();
+    
+    // Poll for updates every 3 seconds for real-time sync
+    setInterval(fetchVotes, 3000);
 });
-
-// Initial fetch and start polling
-fetchVotes();
-setInterval(fetchVotes, 3000);
