@@ -13,7 +13,7 @@ const restaurants = {
     hanimeli: { name: "Hanimeli", lat: 50.860081, lng: 4.3697231 },
     grandcanal: { name: "Grand Canal", lat: 50.8611643, lng: 4.3634908 },
     foodmarket: { name: "Food Market, Gare Maritime", lat: 50.863145, lng: 4.3424341 },
-    ikigai: { name: "Ikigai Sushi", lat: 50.8577507, lng: 4.3540113 }
+    ikigai: { name: "Ikigai Sushi", lat: 50.8578162, lng: 4.3540523 }
 };
 
 // Add markers
