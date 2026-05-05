@@ -1,17 +1,18 @@
-// Initialize Map (Brussels centered)
-const map = L.map('map').setView([50.8503, 4.3517], 14);
+// Initialize Map
+const map = L.map('map').setView([50.8606, 4.3563], 15);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
-// Restaurant coordinates (approximate in Brussels for demo)
+// Exact Coordinates
 const restaurants = {
-    damas: { name: "Les Jours de Damas", lat: 50.8465, lng: 4.3528, votes: 0 },
-    solemio: { name: "O Sole Mio", lat: 50.8480, lng: 4.3550, votes: 0 },
-    hanimeli: { name: "Hanimeli", lat: 50.8520, lng: 4.3600, votes: 0 },
-    grandcanal: { name: "Grand Canal", lat: 50.8550, lng: 4.3480, votes: 0 }
+    damas: { name: "Les Jours de Damas", lat: 50.8596814, lng: 4.341458 },
+    solemio: { name: "O Sole Mio", lat: 50.8590622, lng: 4.3546389 },
+    hanimeli: { name: "Hanimeli", lat: 50.860081, lng: 4.3697231 },
+    grandcanal: { name: "Grand Canal", lat: 50.8611643, lng: 4.3634908 },
+    foodmarket: { name: "Food Market, Gare Maritime", lat: 50.863145, lng: 4.3424341 }
 };
 
 // Add markers
@@ -22,71 +23,138 @@ for (const [key, data] of Object.entries(restaurants)) {
     markers[key] = marker;
 }
 
-// Voting Logic
+// Global State via KVDB
+const BUCKET_ID = 'UzhA9xsFANbXTpnmj6EHUP';
+const API_URL = `https://kvdb.io/${BUCKET_ID}/votes`;
 const MAX_VOTES = 5;
-let totalVotes = 0;
 
 const voteButtons = document.querySelectorAll('.vote-btn');
 const totalVotesSpan = document.getElementById('total-votes');
 const progressBar = document.getElementById('progress-bar');
 const winnerAnnouncement = document.getElementById('winner-announcement');
 const winnerName = document.getElementById('winner-name');
+const voterNameInput = document.getElementById('voter-name');
 
-voteButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        if (totalVotes >= MAX_VOTES) return;
+let currentVoters = {}; // { "Denis": "damas" }
 
-        const key = button.getAttribute('data-restaurant');
-        
-        // Update data
-        restaurants[key].votes++;
-        totalVotes++;
-
-        // Update UI
-        document.getElementById(`count-${key}`).innerText = restaurants[key].votes;
-        totalVotesSpan.innerText = totalVotes;
-        
-        // Update progress bar
-        const progressPercentage = (totalVotes / MAX_VOTES) * 100;
-        progressBar.style.width = `${progressPercentage}%`;
-
-        // Animation/Highlight on marker
-        markers[key].openPopup();
-
-        // Check if finished
-        if (totalVotes === MAX_VOTES) {
-            endVoting();
+async function fetchVotes() {
+    try {
+        const response = await fetch(API_URL);
+        if (response.ok) {
+            const data = await response.json();
+            if (data && typeof data === 'object') {
+                currentVoters = data;
+                updateUI();
+            }
         }
-    });
-});
+    } catch (e) {
+        console.error("Error fetching votes:", e);
+    }
+}
 
-function endVoting() {
-    // Disable all buttons
+async function saveVote(name, restaurantKey) {
+    // Optimistic update
+    currentVoters[name] = restaurantKey;
+    updateUI();
+
+    try {
+        await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(currentVoters)
+        });
+        // Fetch back to ensure sync
+        fetchVotes();
+    } catch (e) {
+        console.error("Error saving vote:", e);
+    }
+}
+
+function updateUI() {
+    // Reset counts and lists
+    const counts = { damas: 0, solemio: 0, hanimeli: 0, grandcanal: 0, foodmarket: 0 };
+    const lists = { damas: [], solemio: [], hanimeli: [], grandcanal: [], foodmarket: [] };
+    let totalVotes = 0;
+
+    for (const [name, restKey] of Object.entries(currentVoters)) {
+        if (counts[restKey] !== undefined) {
+            counts[restKey]++;
+            lists[restKey].push(name);
+            totalVotes++;
+        }
+    }
+
+    // Update DOM
+    for (const key of Object.keys(restaurants)) {
+        document.getElementById(`count-${key}`).innerText = counts[key];
+        document.getElementById(`voters-${key}`).innerText = lists[key].join(', ');
+    }
+
+    totalVotesSpan.innerText = totalVotes;
+    const progressPercentage = Math.min((totalVotes / MAX_VOTES) * 100, 100);
+    progressBar.style.width = `${progressPercentage}%`;
+
+    if (totalVotes >= MAX_VOTES) {
+        endVoting(counts);
+    } else {
+        // Ensure buttons are enabled if we are below max votes
+        voteButtons.forEach(btn => btn.disabled = false);
+        winnerAnnouncement.classList.add('hidden');
+    }
+}
+
+function endVoting(counts) {
     voteButtons.forEach(btn => btn.disabled = true);
 
-    // Find winner
-    let winner = null;
+    let winnerKey = null;
     let maxVotes = -1;
     let tie = false;
 
-    for (const [key, data] of Object.entries(restaurants)) {
-        if (data.votes > maxVotes) {
-            maxVotes = data.votes;
-            winner = data;
+    for (const [key, votes] of Object.entries(counts)) {
+        if (votes > maxVotes) {
+            maxVotes = votes;
+            winnerKey = key;
             tie = false;
-        } else if (data.votes === maxVotes) {
+        } else if (votes === maxVotes) {
             tie = true;
         }
     }
 
-    // Show winner
     winnerAnnouncement.classList.remove('hidden');
     if (tie) {
         winnerName.innerText = "Égalité ! (Il faut un tirage au sort)";
-    } else {
+    } else if (winnerKey) {
+        const winner = restaurants[winnerKey];
         winnerName.innerText = winner.name;
-        // Center map on winner
         map.setView([winner.lat, winner.lng], 16);
-        markers[Object.keys(restaurants).find(k => restaurants[k] === winner)].openPopup();
+        markers[winnerKey].openPopup();
     }
 }
+
+// Event Listeners
+voteButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        const name = voterNameInput.value.trim();
+        if (!name) {
+            alert('Veuillez entrer votre prénom pour voter.');
+            voterNameInput.focus();
+            return;
+        }
+
+        const totalVotes = Object.keys(currentVoters).length;
+        if (totalVotes >= MAX_VOTES && !currentVoters[name]) {
+            alert('Le nombre maximum de votes (5) a été atteint.');
+            return;
+        }
+
+        const key = button.getAttribute('data-restaurant');
+        markers[key].openPopup();
+        saveVote(name, key);
+    });
+});
+
+// Initial fetch and start polling
+fetchVotes();
+setInterval(fetchVotes, 3000);

@@ -10,33 +10,50 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
+    <header class="main-header">
+        <h1>Où mange-t-on ce midi ? 🍽️</h1>
+        <p>Votez pour votre restaurant préféré (5 personnes max).</p>
+    </header>
+
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+
     <div class="container">
-        <header>
-            <h1>Où mange-t-on ce midi ? 🍽️</h1>
-            <p>Votez pour votre restaurant préféré (5 personnes max).</p>
-        </header>
-
         <main>
-            <div id="map"></div>
-
             <section class="voting-section">
                 <h2>Les Options</h2>
+                
+                <div class="user-input-group">
+                    <label for="voter-name">Votre prénom :</label>
+                    <input type="text" id="voter-name" placeholder="Entrez votre prénom pour voter" required>
+                </div>
+
                 <div class="options-grid">
                     <button class="vote-btn" data-restaurant="damas">
                         <h3>Les Jours de Damas</h3>
+                        <div class="voters-list" id="voters-damas"></div>
                         <span class="vote-count" id="count-damas">0</span> votes
                     </button>
                     <button class="vote-btn" data-restaurant="solemio">
                         <h3>O Sole Mio</h3>
+                        <div class="voters-list" id="voters-solemio"></div>
                         <span class="vote-count" id="count-solemio">0</span> votes
                     </button>
                     <button class="vote-btn" data-restaurant="hanimeli">
                         <h3>Hanimeli</h3>
+                        <div class="voters-list" id="voters-hanimeli"></div>
                         <span class="vote-count" id="count-hanimeli">0</span> votes
                     </button>
                     <button class="vote-btn" data-restaurant="grandcanal">
                         <h3>Grand Canal</h3>
+                        <div class="voters-list" id="voters-grandcanal"></div>
                         <span class="vote-count" id="count-grandcanal">0</span> votes
+                    </button>
+                    <button class="vote-btn" data-restaurant="foodmarket">
+                        <h3>Food Market, Gare Maritime</h3>
+                        <div class="voters-list" id="voters-foodmarket"></div>
+                        <span class="vote-count" id="count-foodmarket">0</span> votes
                     </button>
                 </div>
                 
