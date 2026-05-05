@@ -12,7 +12,8 @@ const restaurants = {
     solemio: { name: "O Sole Mio", lat: 50.8590622, lng: 4.3546389 },
     hanimeli: { name: "Hanimeli", lat: 50.860081, lng: 4.3697231 },
     grandcanal: { name: "Grand Canal", lat: 50.8611643, lng: 4.3634908 },
-    foodmarket: { name: "Food Market, Gare Maritime", lat: 50.863145, lng: 4.3424341 }
+    foodmarket: { name: "Food Market, Gare Maritime", lat: 50.863145, lng: 4.3424341 },
+    ikigai: { name: "Ikigai Sushi", lat: 50.8577507, lng: 4.3540113 }
 };
 
 // Add markers
@@ -74,8 +75,8 @@ async function saveVote(name, restaurantKey) {
 
 function updateUI() {
     // Reset counts and lists
-    const counts = { damas: 0, solemio: 0, hanimeli: 0, grandcanal: 0, foodmarket: 0 };
-    const lists = { damas: [], solemio: [], hanimeli: [], grandcanal: [], foodmarket: [] };
+    const counts = { damas: 0, solemio: 0, hanimeli: 0, grandcanal: 0, foodmarket: 0, ikigai: 0 };
+    const lists = { damas: [], solemio: [], hanimeli: [], grandcanal: [], foodmarket: [], ikigai: [] };
     let totalVotes = 0;
 
     for (const [name, restKey] of Object.entries(currentVoters)) {
